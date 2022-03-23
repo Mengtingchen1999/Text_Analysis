@@ -1,0 +1,725 @@
+---
+output: 
+  pdf_document: 
+    toc: no
+---
+
+
+\begin{titlepage}
+\begin{center}
+\vspace*{1.5cm}
+\textbf{\small\uppercase{Data Tidying and Reporting}} \\
+\vspace*{.5cm}
+\rule{16cm}{0.5mm}\\
+\begin{Large}
+\vspace*{.5cm}
+\textbf{\uppercase{Text Analysis for Pride and Prejudice}} \\
+\vspace*{.5cm}
+\end{Large}
+\rule{16cm}{0.5mm}\\
+\vspace{0.5cm}
+\end{center}
+
+\vspace*{2.75cm}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.75\textwidth]{Text_Analysis}
+\end{figure}
+\vspace*{2.75cm}
+
+\begin{center}
+\large Dayana Alconz Gómez and Mengting Chen\\
+\large Universidad Carlos III de Madrid\\
+\large Master in statistics for data science\\
+\large \today
+\end{center}
+
+
+\end{titlepage}
+\pagebreak
+
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(quanteda)
+library(readtext)
+library(stringi)
+library(ggplot2)
+library(quanteda.textplots)
+library(wordcloud)
+```
+
+
+
+This project is aim to carry out a text analysis of the book *__Pride and prejudice__* using *quanteda* package. 
+
+Pride and Prejudice is one of Jane Austen's most famous works and one of the first romantic comedies in the history of the novel. It is a novel of personal development, a romantic comedy that hides many reflections and perfectly reflects the rural aristocratic English society of the time. Two main figure, Elizabeth Bennet, one of the daughters of the Bennet family and Fitzwilliam Darcy, an upper-class aristocrat, each in their own way and in much same way, must mature to overcome some crises and learn from their mistakes in order to face the future together, overcoming Darcy's class pride and Elizabeth prejuice towards him.
+
+
+We can load the text using *__readtext__* package, directly from the Project Gutenberg website.
+
+```{r, warning=FALSE}
+# Loading the text file
+pride_prejudice =texts(readtext("https://www.gutenberg.org/cache/epub/42671/pg42671.txt"))
+names(pride_prejudice) = "Pride and Prejudice"
+# Display just the 75 characters using stri_sub()
+cat(stri_sub(pride_prejudice, 1, 75))
+```
+
+```{r, warning=FALSE, eval=FALSE}
+wordcloud(words = pride_prejudice, max.words = 100, random.order = FALSE,
+          colors=brewer.pal(8, "Dark2"))
+```
+
+# 1. Analyse and study occurrence of words related with love or positive feeling in general.
+
+For the analysis, We will consider the following word related with positive feeling: *love*, *happiness*, *cheerful*, *joyful*, *pleased*, *laugh*, *wonderful* and *amazing*.
+
+The Gutenberg edition of the text contains some metadata before and after the text of the novel. Therefore, let's separate the content from metadata. The code bellow uses the *regexec* and *substring* functions to separate this from the text. 
+
+
+Using the following character index of the beginning an end of the novel.
+```{r, warning=FALSE}
+
+## Extract the header and end information of Pride and Prejudice
+(start_v= stri_locate_first_fixed(pride_prejudice, "CHAPTER I")[1])
+
+(end_v= stri_locate_last_fixed(pride_prejudice, " printed.")[1])
+
+```
+The previous code give us the character index of the beginning and end of the novel which is 1847 and 692738.
+
+To trim the non-book content, we use *stri_sub()* to extract the text between the beginning and ending indexed found above.
+ 
+ 
+```{r, warning=FALSE}
+novel_v = stri_sub(pride_prejudice, start_v, end_v)
+length(novel_v)
+stri_sub(novel_v, 1, 94) %>%cat()
+
+```
+
+Reprocessing the context:
+
+We begin processing the text by converting to lower case using the quanteda's *_tolower(), which preserve upper-case acronyms when detected. For character objects we use char_tolower(). 
+
+```{r, warning=FALSE}
+# Lower case text 
+novel_lower_v = char_tolower(novel_v)
+
+# Getting the character vector of tokens
+pride_word = tokens(novel_lower_v, remove_punct = TRUE) %>%  as.character()
+(total_length = length(pride_word))
+
+pride_word[c(4,5,6)]
+
+# Check the positions of the word "love"
+which(pride_word=="love") %>% head()
+
+```
+
+ 
+The code bellow use the tokenized text to the occurrence of the word *__love__*, *__happiness__*, *__cheerful__*, *__joyful__*, *__pleased__*, *__laugh__*, *__wonderful__*, *__amazing__*. To includes the possessive form, we may sum the counts of both forms, count the keyword-in-context marches by regular expression or glob. 
+
+quanteda's tokenizer split on a more comprehensive set of "word boundaries". quanteda's *tokens()* function by default does not remove punctuation or numbers by default. To more closely  match the counts in the book, we have removed punctuation.
+
+
+
+```{r, warning=FALSE, eval=FALSE}
+# Total occurrences of "love" 91
+length(pride_word[which(pride_word =="love")])
+# Total occurrences of "happiness" 72
+length(pride_word[which(pride_word =="happiness")])
+# Total occurrences of "cheerful" including ... 7
+length(pride_word[which(pride_word =="cheerful")])+ length(pride_word[which(pride_word=="cheerfullness")])
+# Total occurrences of "joyful" including ... 2
+length(pride_word[which(pride_word =="joyful")])+ length(pride_word[which(pride_word=="joyfulness")])
+# Total occurrences of "pleased" including ... 39
+length(pride_word[which(pride_word =="pleased")])+ length(pride_word[which(pride_word=="pleasedness")])
+# Total occurrences of "laugh" including ... 27
+length(pride_word[which(pride_word =="laugh")])+ length(pride_word[which(pride_word=="laughing")])
+# Total occurrences of "wonderful" including ... 5
+length(pride_word[which(pride_word =="wonderful")])+ length(pride_word[which(pride_word=="wonderfully")])
+# Total occurrences of "amazing" including ... 3
+length(pride_word[which(pride_word =="amazing")])+ length(pride_word[which(pride_word=="amaze")])
+
+
+# same thing but now using kwic()
+nrow(kwic(novel_lower_v, pattern="love")) # 91
+nrow(kwic(novel_lower_v, pattern = "love*")) ## includes word like loveable # 119
+# Happiness
+nrow(kwic(novel_lower_v, pattern="happiness")) # 72
+nrow(kwic(novel_lower_v, pattern = "happiness*")) # 72
+# Cheerful
+nrow(kwic(novel_lower_v, pattern="cheerful")) # 7
+nrow(kwic(novel_lower_v, pattern = "cheerful*")) # 16
+# Joyful
+nrow(kwic(novel_lower_v, pattern="joyful")) # 2
+nrow(kwic(novel_lower_v, pattern = "joyful*")) #3
+# Pleased
+nrow(kwic(novel_lower_v, pattern="pleased")) # 39
+nrow(kwic(novel_lower_v, pattern = "pleased*")) # 39
+# Laugh
+nrow(kwic(novel_lower_v, pattern="laugh")) # 17
+nrow(kwic(novel_lower_v, pattern = "laugh*")) # 42
+# Wonderful
+nrow(kwic(novel_lower_v, pattern="wonderful")) # 3
+nrow(kwic(novel_lower_v, pattern = "wonderful*")) # 5
+# Amazing
+nrow(kwic(novel_lower_v, pattern="amazing")) # 2
+nrow(kwic(novel_lower_v, pattern = "amazing*")) # 2
+```
+
+Tablet of frequency for positive feeling words:
+
+| Word      | love | happiness | cheerful | joyful | pleased | laugh | wonderful | amazing |
+|:-----------:|:------:|:-----------:|:----------:|:--------:|:---------:|:-------:|:-----------:|:---------:|
+| Frequency | 91   | 72        | 16       | 3      | 39      | 42    | 5         | 3       |
+
+
+
+As we can see from the previous result, the word that appears most often is *love*, followed by *happiness*, *pleased* and *laugh*, the word that appear least often in the text are the word *joyful* and *amazing*.
+
+
+With *ntype()* we can calculate the size of the vocabulary includes possessive forms, but excludes punctuation, symbols and number.
+
+Total unique words
+```{r, warning=FALSE}
+# Total unique words
+length(unique(pride_word))
+ntype(char_tolower(novel_v), remove_punct=TRUE)
+```
+
+
+The total number of unique word is 6610.
+
+What fraction of the total words (excluding the punctuation) in the novel are "love"?
+
+```{r, warning=FALSE}
+(total_love_hits = nrow(kwic(novel_lower_v, pattern= "^love('s){0,1}$", valuetype = "regex")))
+total_love_hits /ntoken(novel_lower_v, remove_punct= TRUE)
+
+```
+
+What fraction of the total words (excluding the punctuation) in the novel are "happiness"?
+
+```{r, warning=FALSE}
+(total_happiness_hits = nrow(kwic(novel_lower_v, pattern= "^happiness('s){0,1}$", valuetype = "regex")))
+total_happiness_hits /ntoken(novel_lower_v, remove_punct= TRUE)
+
+```
+What fraction of the total words (excluding the punctuation) in the novel are "cheerful"?
+
+```{r, warning=FALSE}
+(total_cheerful_hits = nrow(kwic(novel_lower_v, pattern= "^cheerful('s){0,1}$", valuetype = "regex")))
+total_cheerful_hits /ntoken(novel_lower_v, remove_punct= TRUE)
+
+```
+
+What fraction of the total words (excluding the punctuation) in the novel are "joyful"?
+
+```{r, warning=FALSE}
+(total_joyful_hits = nrow(kwic(novel_lower_v, pattern= "^joyful('s){0,1}$", valuetype = "regex")))
+total_joyful_hits /ntoken(novel_lower_v, remove_punct= TRUE)
+
+```
+
+What fraction of the total words (excluding the punctuation) in the novel are "pleased"?
+
+```{r, warning=FALSE}
+cat((total_pleased_hits = nrow(kwic(novel_lower_v, pattern= "^pleased('s){0,1}$", valuetype = "regex"))))
+cat(total_pleased_hits /ntoken(novel_lower_v, remove_punct= TRUE))
+
+```
+What fraction of the total words (excluding the punctuation) in the novel are "wonderful"?
+
+```{r, warning=FALSE}
+(total_wonderful_hits = nrow(kwic(novel_lower_v, pattern= "^wonderful('s){0,1}$", valuetype = "regex")))
+total_pleased_hits /ntoken(novel_lower_v, remove_punct= TRUE)
+
+```
+What fraction of the total words (excluding the punctuation) in the novel are "laugh"?
+
+```{r, warning=FALSE}
+(total_laugh_hits = nrow(kwic(novel_lower_v, pattern= "^laugh('s){0,1}$", valuetype = "regex")))
+total_laugh_hits /ntoken(novel_lower_v, remove_punct= TRUE)
+
+```
+What fraction of the total words (excluding the punctuation) in the novel are "amazing"?
+
+```{r, warning=FALSE}
+(total_amazing_hits = nrow(kwic(novel_lower_v, pattern= "^amazing('s){0,1}$", valuetype = "regex")))
+total_amazing_hits /ntoken(novel_lower_v, remove_punct= TRUE)
+
+```
+
+
+The word **love** represent the 0.074% of the total words in the novel, 0.058% for **happiness** and so on. 
+
+
+# 2. Make frequency plot
+
+To quickly sort the word types by their frequency, we can use the *dfm()* command to create a matrix of counts of each word type a document frequency matrix. In this case there is only one document the entire book.
+
+
+Ten most frequent words
+```{r, warning=FALSE}
+# ten most frequent words 
+pride_dfm=dfm(novel_lower_v, remove_punct= TRUE)
+head(pride_dfm, nf=10)
+
+```
+
+The word **chapter** appear in the book 61 times, which means that we have in total 61 chapter.
+
+
+Getting the list of the most frequent 10 terms is easy, using *textstat_frequency()*
+
+```{r, warning=FALSE}
+library("quanteda.textstats")
+textstat_frequency(pride_dfm, n=10)
+```
+
+Let's plot the most frequent terms, we can supply the results of *textstat_frequncy()* to *ggplot()* to plot their frequency by their rank:
+
+```{r, warning=FALSE,  fig.align='center', fig.height=4, fig.width=4 }
+
+theme_set(theme_minimal())
+
+
+textstat_frequency(pride_dfm, n=10) %>% 
+    ggplot(aes(x=rank, y = frequency)) +
+    geom_point() +
+    labs(x= "Frequncy rank", y="Term frequncy")+theme_linedraw()
+
+```
+For direct comparison with the next chapter, we also create the sorted list of the most frequently found words using this:
+```{r, warning=FALSE}
+sorted_pride_freqs_t = topfeatures(pride_dfm, n= nfeat(pride_dfm))
+```
+
+
+Plotting the most frequent terms without ggplot:
+
+```{r, warning=FALSE,  fig.align='center'}
+plot(sorted_pride_freqs_t[1:10], type = "b", xlab= "Top Ten Words", ylab= "Percentage of full text", xaxt = "n")
+axis(1, at = c(1:10), labels=names(sorted_pride_freqs_t[1:10]))
+```
+
+The most frequent word is *the*, *to*, *of*, *and*, looking at the plot we can observed that from the word *and* there is a big jump in frequency.
+
+# 3. Compare word frequency data of the words like "he", "she", "him", "her", and show also relative frequencies.
+
+We can query the document-frequency matrix to retrieve word frequencies.
+
+```{r, warning=FALSE}
+# frequencies of "he", "she", "him" and "her"
+sorted_pride_freqs_t[c("he", "she", "him", "her")]
+# Another method: indexing the dfm
+pride_dfm[, c("he", "she", "him", "her")]
+```
+
+```{r, warning=FALSE}
+# The most frequent one
+sorted_pride_freqs_t[1]
+```
+
+As we can observed, the most frequent word between "he", "she", "him" and "her" is *__her__* and followed by *__she__*, this is expected given that this book is most focused on female characters.
+
+We can also calculate the frequency ratio, for instance, between "she" and "he".
+```{r, warning=FALSE}
+sorted_pride_freqs_t["she"]/ sorted_pride_freqs_t["he"]
+```
+
+This ratio is greater than 1 which mean that, the word "she" appears 1.27 time more than the word "he".
+
+Frequency ratio between "her" and "him".
+```{r, warning=FALSE}
+sorted_pride_freqs_t["her"]/ sorted_pride_freqs_t["him"]
+```
+The ratio between "her" and "him" is 2.92, which mean that the word "her" appears 2.92 time more than the word "him".
+
+Let's calculate the relative ratio for: "he", "she", "him" and "her". 
+
+Total number of tokens:
+```{r, warning=FALSE}
+ntoken(pride_dfm)
+sum(sorted_pride_freqs_t)
+```
+What fraction of the total words (excluding punctuation) in the novel are "he", "she", "him" and "her"?
+
+Relative frequency:
+```{r, warning=FALSE, eval=FALSE}
+
+# Relative frequency for "he"
+(total_he_hits = nrow(kwic(novel_lower_v, pattern= "^he('s){0,1}$", valuetype = "regex")))
+total_he_hits /ntoken(novel_lower_v, remove_punct = TRUE) #0.01082534 
+
+# Relative frequency for "she"
+(total_she_hits = nrow(kwic(novel_lower_v, pattern= "^she('s){0,1}$", valuetype = "regex")))
+total_she_hits /ntoken(novel_lower_v, remove_punct = TRUE) # 0.01379925
+
+# Relative frequency for "him"
+(total_him_hits = nrow(kwic(novel_lower_v, pattern= "^him('s){0,1}$", valuetype = "regex")))
+total_him_hits /ntoken(novel_lower_v, remove_punct = TRUE) # 0.006152061
+
+# Relative frequency for "her"
+(total_her_hits = nrow(kwic(novel_lower_v, pattern= "^her('s){0,1}$", valuetype = "regex")))
+total_her_hits /ntoken(novel_lower_v, remove_punct = TRUE) # 0.018015 
+```
+
+Table of relative frequency:
+
+| Word               | he         | she        | him         | her      |
+|:--------------------:|:------------:|:------------:|:-------------:|----------:|
+| Relative frequency | 0.01082534 | 0.01379925 | 0.006152061 | 0.018015 |
+
+
+By weighting the dfm directly.
+
+```{r, warning=FALSE}
+sorted_pride_rel_freqs_t = sorted_pride_freqs_t/sum(sorted_pride_freqs_t) * 100
+# She
+sorted_pride_rel_freqs_t["she"]
+# He
+sorted_pride_rel_freqs_t["he"]
+# him
+sorted_pride_rel_freqs_t["him"]
+# her 
+sorted_pride_rel_freqs_t["her"]
+
+# By weighting the dfm directly
+pride_dfm_pct = dfm_weight(pride_dfm, scheme = "prop")*100
+dfm_select(pride_dfm_pct, pattern="she")
+dfm_select(pride_dfm_pct, pattern="he")
+dfm_select(pride_dfm_pct, pattern="him")
+dfm_select(pride_dfm_pct, pattern="her")
+```
+
+Plotting the most frequent term using ggplot2:
+```{r, warning=FALSE, fig.align='center'}
+
+pride_dfm_pct <- dfm_weight(pride_dfm, scheme = "prop") * 100
+textstat_frequency(pride_dfm_pct, n=10) %>% 
+  ggplot(aes(x= reorder(feature, -rank), y = frequency)) + 
+  geom_bar(stat = "identity", fill="lightslateblue") + coord_flip()+
+  labs(x= "", y = "Term Frequncy as a Percentage")
+```
+
+As we can observed from the plot above, the word that appears the most is **the** followed by **to** and so on. The word **she** and **her** is in the top 10 word.
+
+
+# 4. Make  *token* distribution analysis.
+
+We began with dispersion plots, that allow us to visualize the occurrence of particular terms throughout the text. The object returned by the *kwic* function can be plotted to display a dispersion plot. 
+
+
+Dispersion plot for the word *love*, *happiness*, *cheerful*, *joyful*, *pleased*, *laugh*, *wonderful*, *amazing*. 
+
+To produce multiple dispersion plots for comparison, we can simply send more than one kwic() output to *textplot_xray()*.
+
+```{r, fig.align='center', warning=FALSE}
+# Using words from tokenized corpus for dispersion 
+textplot_xray(
+  kwic(novel_v, pattern="love"),
+  kwic(novel_v, pattern="happiness"),
+  kwic(novel_v, pattern= "cheerful"),
+  kwic(novel_v, pattern="joyful"),
+  kwic(novel_v, pattern="pleased"),
+  kwic(novel_v, pattern= "laugh"),
+  kwic(novel_v, pattern="wonderful"),
+  kwic(novel_v, pattern="amazing")
+  
+) + ggtitle("Lexical dispersion for positive feeling word")+aes(color=keyword)
+
+```
+
+Through this plot we observed that the word as **love** and **happiness** appears more often than the other words. Most of the words represent large dispersion. The occurrence of words as **love** and **happiness** for certain chapter is greater than for another, i.e. these words are more concentrated around certain chapter.
+
+
+Dispersion plot for word "he", "she", "him" and "her".
+
+```{r, warning=FALSE, fig.align='center'}
+textplot_xray(
+  kwic(novel_v, pattern = "she"),
+  kwic(novel_v, pattern = "he"),
+  kwic(novel_v, pattern = "her"),
+  kwic(novel_v, pattern = "him")) +
+  ggtitle("Lexical dispersion")+aes(color=keyword)
+
+```
+Through this plot we observed that most of the words represent small dispersion, they are more concentrated. The occurrence of words as **him** for each chapter is almost equal, i.e. these words represent small dispersion, they appear almost in every chapters.
+
+
+# 5. Identify chapter breaks.
+
+Searching with regular expression 
+```{r, warning=FALSE}
+# Identify the chapter break locations 
+chap_positions_v = kwic(novel_v, phrase(c("CHAPTER \\D")), valuetype= "regex")$from
+cat(head(chap_positions_v))
+```
+The chapter break locations are 1, 1056, 2084 and so on.
+
+
+Splitting the text into chapters means that we will have a collection of documents, which makes this a good time to make a *corpus* object to hold the texts. Initially, we make a single-document corpus, and then use the *char_segment()* functions to split this by the string which specifies the chapter breaks.
+
+Corpus analysis is a type of text analysis that allow large-scale comparisons to be made between objects present in the text. This makes it possible it appreciate phenomena that are no necessarily visible when we read. For instance, you have a collection of documents, you might want to fund patterns of grammatical usage or recurring phrases in them, etc.  
+
+```{r, warning=FALSE}
+chapters_corp =
+  corpus(pride_prejudice) %>% 
+corpus_segment(pattern = "CHAPTER\\s\\D.*\\n", valuetype = "regex")
+summary(chapters_corp, 10)
+
+```
+To tidy this up, we can remove the trailing ... character, using *stri_trim_right()*, since the ... is a member of the "whitespace" group.
+
+```{r, warning=FALSE}
+# To tidy this up, we can remove the trailing \n character.
+docvars(chapters_corp, "pattern") = stringi::stri_trim_right(docvars(chapters_corp, "pattern"))
+summary(chapters_corp, n=10)
+```
+
+
+For Chapter I there is in total 61 sentences with 1052 tokens, for Chapter II 53 sentences and 1025 tokens and so on.
+
+
+For better reference, let's also rename the document labels with these chapter headings:
+```{r, warning=FALSE}
+docnames(chapters_corp) = docvars(chapters_corp, "pattern")
+```
+
+
+Let's plot the barplot for "love", "happiness", "she" and "her".
+
+With the corpus split into chapter, we can use the dfm() function to create a matrix of counts of each word in each chapter a document frequency matrix.
+
+```{r, warning=FALSE}
+# create a dfm
+chap_dfm= dfm(chapters_corp)
+```
+
+Barplot of "love"
+```{r, fig.align='center',fig.width=4, fig.height=4, warning=FALSE}
+# extract row with count for "love"/ "happiness"/"she"/"her" in each chapter and convert to dataframe for plotting
+
+love_life_df= chap_dfm %>% 
+  dfm_keep(pattern=c("love", "happiness", "she", "her")) %>% 
+  convert(to = "data.frame")
+
+love_life_df$chapter = 1:nrow(love_life_df)
+
+ggplot(data= love_life_df, aes(x = chapter, y= love)) +
+  geom_bar(stat= "identity",  fill="lightslateblue") +
+  labs(x= "Chapter",
+       y = "Frequency",
+       title = 'Ocurrence of "love" per Chapter')
+
+```
+The word **love** appears more in the chapter 24 and 59. There are some chapter that it does not appear, for instance the chapter 23.
+
+Barplot of "happiness"
+```{r, fig.align='center', fig.height=4, fig.width=4, warning=FALSE}
+# ocurrence of happiness 
+
+ggplot(data= love_life_df, aes(x=chapter, y =happiness))+
+  geom_bar(stat= "identity",fill="lightslateblue")+
+    labs(x= "Chapter",
+     y = "Frequency",
+     title= 'Ocurrence of "happiness" per Chapter')
+
+```
+
+The word **happiness** appears more in the chapter 23 and 24. 
+
+
+Barplot of "she" 
+
+```{r, fig.align='center', fig.height=4, fig.width=4, warning=FALSE}
+# Ocurrence of "she"
+ggplot(data= love_life_df, aes(x = chapter, y= she)) +
+  geom_bar(stat= "identity", fill="lightslateblue") +
+  labs(x= "Chapter",
+       y = "Frequency",
+       title = 'Ocurrence of "she" per Chapter')
+
+```
+The word **she** appears more in the chapter 43.
+
+
+
+Barplot of "her"
+```{r, fig.align='center', fig.height=4, fig.width=4, warning=FALSE}
+ggplot(data= love_life_df, aes(x = chapter, y= her)) +
+  geom_bar(stat= "identity", fill="lightslateblue") +
+  labs(x= "Chapter",
+       y = "Frequency",
+       title = 'Ocurrence of "her" per Chapter')
+
+```
+The word **her** appears a lot in every chapter, but more in the chapter 18 and 44.
+
+
+
+The plot above are raw frequency plot. For relative frequency plot we can weight the document-frequency matrix. To obtain expected word frequency per 100 words, we multiply by 100. We will use the *head* function, which prints the first few row and columns
+
+```{r, warning=FALSE, comment=FALSE}
+rel_dfm = dfm_weight(chap_dfm, scheme = "prop")*100
+head(rel_dfm)
+```
+
+Relative frequency of "love"
+```{r, fig.align='center', fig.height=4, fig.width=4, warning=FALSE}
+# subset dfm and convert to dataframe object
+rel_chap_freq = rel_dfm %>% 
+  dfm_keep(pattern =c("love", "happiness", "she", "her")) %>% 
+  convert(to ="data.frame")
+
+rel_chap_freq$chapter = 1:nrow(rel_chap_freq)
+ggplot(data= rel_chap_freq, aes(x= chapter, y = love)) +
+  geom_bar(stat ="identity", fill="lightslateblue")+
+  labs(x="Chapter", y="Relative frequency",
+       title ='Relative frequency of "love" per Chapter')
+
+```
+
+Relative frequency of "happiness"
+```{r,fig.align='center', fig.height=4, fig.width=4, warning=FALSE}
+ggplot(data = rel_chap_freq, aes(x=chapter, y= happiness))+
+  geom_bar(stat = "identity", fill="lightslateblue")+
+  labs(x="Chapter", y="Relative frequency",
+       title = 'Relative frequency of "happiness per Chapter"')
+```
+
+Relative frequency of "she"
+```{r, fig.align='center', fig.height=4, fig.width=4, warning=FALSE}
+ggplot(data = rel_chap_freq, aes(x=chapter, y= she))+
+  geom_bar(stat = "identity", fill="lightslateblue")+
+  labs(x="Chapter", y="Relative frequency",
+       title = 'Relative frequency of "she" per Chapter')
+```
+Relative frequency of "her"
+```{r, fig.align='center', fig.height=4, fig.width=4, warning=FALSE}
+ggplot(data = rel_chap_freq, aes(x=chapter, y= her))+
+  geom_bar(stat = "identity", fill="lightslateblue")+
+  labs(x="Chapter", y="Relative frequency",
+       title = 'Relative frequency of "her" per chapter')
+```
+
+
+# 6. Make a correlation analysis between words related with *love* or *positive feelings* and some particular characters or people of the novel.
+
+Correlation analysis can be constructed using fast, sparse means through the *textstat_simil()* function. We are going to select feature comparison for *love* and *positive feeling* and some particular characters and convert this into a matrix. Because correlations are sensitive to document length, we first convert this into a relative frequency using *dfm_weight()*.
+
+*Positive feeling:* love, happiness, pleased and laugh.
+Some characters: Elizabeth Bennet (Elizabeth), Mr.Fitzwilliam Darcy (Darcy), Lydia Bennet (Lydia) and Jane Bennet (Jane).
+
+
+```{r,warning=FALSE, comment=FALSE, eval =FALSE}
+# Ocurrence for each characters
+nrow(kwic(novel_lower_v, pattern="Elizabeth")) # 596
+nrow(kwic(novel_lower_v, pattern="Darcy")) # 373
+nrow(kwic(novel_lower_v, pattern="Lydia")) # 133
+nrow(kwic(novel_lower_v, pattern="Jane")) # 264
+```
+
+```{r, warning=FALSE, comment=FALSE}
+positive_df= chap_dfm %>% 
+  dfm_keep(pattern=c("love", "happiness", "pleased", "laugh","elizabeth", "darcy", "lydia", "jane"))
+
+dfm_weight(positive_df, scheme = "prop") %>% 
+  textstat_simil(selection=c("elizabeth", "darcy", "lydia", "jane"), method="correlation", margin ="feature") %>% 
+  as.matrix() 
+
+```
+As we can see in the correlation matrix, there is a negative correlative between **love** and **elizabeth**. Most of the correlation between word related with positive feeling and characters in the novel are very low and negative. 
+
+
+# 7. Show some measure of *lexical variety*
+
+  - Mean word frequency
+```{r, warning=FALSE}
+# Length of the book in chapters
+ndoc(chapters_corp)
+# chapter names
+docnames(chapters_corp) %>% head()
+```
+Calculating the mean word frequencies
+```{r,warning=FALSE}
+# calculating the mean word frequencies for first few chapters
+ntoken(chapters_corp) %>%  head()
+# average
+(ntoken(chapters_corp)/ntype(chapters_corp)) %>% head()
+```
+
+
+  - Extracting word usage means
+
+The quotient of the number of tokens and number of types is a vector, we can simply feed this to *plot()* using pipe operator
+```{r, fig.align='center'}
+(ntoken(chapters_corp)/ntype(chapters_corp)) %>% 
+  plot(type="h", ylab="Mean word frequency", col="violet", main="Mean word frequency")
+
+```
+This plot represent the mean word frequency per chapter, as we can observed the chapter 43 have higher mean word frequency than the rest of the chapter. The chapter with the smallest mean word frequency is the chapter 12.
+
+
+Scale plot:
+```{r, fig.align='center'}
+(ntoken(chapters_corp)/ntype(chapters_corp)) %>% 
+  scale() %>% 
+  plot(type="h", ylab="Scaled mean word frequency",col="violet", main="Scale plot")
+```
+
+  - Ranking the values
+
+```{r, warning=FALSE}
+mean_word_use_m= (ntoken(chapters_corp)/ntype(chapters_corp))
+sort(mean_word_use_m, decreasing=TRUE) %>%  head()
+```
+
+
+  - Calculating the TTR (Type-Token Ratio)
+
+Measures of lexical diversity can be estimated using *textstat_lexdiv()* for each document of the **dfm**. 
+```{r, warning=FALSE, comment=FALSE}
+dfm(chapters_corp) %>% 
+  textstat_lexdiv(measure ="TTR") %>% 
+  head(n=10)
+```
+
+
+A type-token ratio (TTR) or variety in vocabulary is the total number of UNIQUE words(type) divided by the total number of words (tokens) in a given segment of language. The closer the TTR ratio is to 1, the greater the lexical richness of the segment.
+
+As we can see, most of the chapter contain a lot of repeat words, none of the TTR per chapter is greater than 1, which indicate that the lexical richness per chapter is a little bit poor.
+
+# 8. Calculate the *Hapax Richness*
+
+Another measure of lexical diversity is *Hapax richness*, define as the number of words that occur only once divided by the total number of words. We can calculate the Hapax richness by using a logical operation on the document-feature matrix, tor return a logical value for each term that occur once, and then sum these to get a count.
+
+Hapaxes per document
+```{r}
+# hapaxes per document
+rowSums(chap_dfm==1) %>% head()
+
+```
+
+As a proportion 
+```{r}
+# as a proportion
+hapax_proportion = rowSums(chap_dfm==1)/ntoken(chap_dfm)
+head(hapax_proportion)
+```
+
+Let's to visualized it thought a plot:
+
+```{r, fig.align='center'}
+barplot(hapax_proportion, beside=TRUE, col="violet", names.arg=seq_len(ndoc(chap_dfm)))
+```
+
+Looking at the plot we come to the same conclusion as before, there is very little the number of words that occur only per chapter. 
+
